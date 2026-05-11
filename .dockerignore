@@ -1,0 +1,15 @@
+.env
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+logs.log
+groups/
+archive/
+runtime/
+*.session
+*.session-journal
+docs/superpowers/
+tests/

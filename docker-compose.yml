@@ -1,0 +1,44 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-slg_bot}
+      MYSQL_USER: ${MYSQL_USER:-slg_bot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_mysql_password}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      SESSION_NAME: /app/runtime/slgbot
+      GROUPS_DIR: /app/groups
+      LOG_ARCHIVE_DIR: /app/archive
+      RUNTIME_SETTINGS_FILE: /app/runtime/runtime_settings.json
+      LOG_FILE: /app/runtime/logs.log
+    volumes:
+      - ./groups:/app/groups
+      - ./archive:/app/archive
+      - ./runtime:/app/runtime
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
