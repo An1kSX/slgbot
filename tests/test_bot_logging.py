@@ -3,6 +3,7 @@ import importlib.util
 import json
 import zipfile
 from datetime import datetime
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -82,3 +83,55 @@ def test_json_isolation_and_zip_contains_only_current_day(logging_bot, monkeypat
     assert "12.05.2026" in captured["caption"]
     assert "12.05.2026" in captured["document"]
     assert not Path(captured["document"]).exists()
+
+
+def test_no_key_logs_messages_but_skips_appeals_and_reports(logging_bot, monkeypatch):
+    module, client = logging_bot
+    msg = message(-1001, 12, "Need legal advice")
+    msg.reply = AsyncMock()
+    register = AsyncMock()
+    member_title = AsyncMock(return_value=None)
+    classifier = AsyncMock()
+    cooldown = AsyncMock()
+    mark = AsyncMock()
+    set_cooldown = AsyncMock()
+    report_groups = AsyncMock()
+    monkeypatch.setattr(module, "ensure_group_registered", register)
+    monkeypatch.setattr(module, "chat_member_title", member_title)
+    monkeypatch.setattr(module.chatgpt, "is_business_message", classifier)
+    monkeypatch.setattr(module.db, "group_has_active_cooldown", cooldown)
+    monkeypatch.setattr(module.db, "group_change_appeal", mark)
+    monkeypatch.setattr(module.db, "set_group_cooldown", set_cooldown)
+    monkeypatch.setattr(module.db, "groups_with_appeal", report_groups)
+
+    async def scenario():
+        await module.group_messages_logs(None, msg)
+        await module.send_grouplist_with_appeals()
+
+    asyncio.run(scenario())
+    assert json.loads(module.json_log_path(msg).read_text(encoding="utf-8"))[0]["text"] == msg.text
+    register.assert_awaited_once_with(msg)
+    for skipped in (classifier, cooldown, mark, set_cooldown, report_groups, msg.reply):
+        skipped.assert_not_awaited()
+    client.send_message.assert_not_called()
+
+
+def test_configured_key_still_processes_business_appeals(logging_bot, monkeypatch):
+    module, _ = logging_bot
+    monkeypatch.setattr(module, "settings", replace(module.settings, openai_api_key="test-key"))
+    msg = message(-1001, 12, "Need legal advice")
+    msg.date = msg.date.replace(hour=20)
+    msg.from_user = SimpleNamespace(id=42, first_name="Client", last_name="", username="client")
+    msg.reply = AsyncMock()
+    classifier = AsyncMock(return_value=True)
+    mark = AsyncMock()
+    set_cooldown = AsyncMock()
+    monkeypatch.setattr(module.chatgpt, "is_business_message", classifier)
+    monkeypatch.setattr(module.db, "group_has_active_cooldown", AsyncMock(return_value=False))
+    monkeypatch.setattr(module.db, "group_change_appeal", mark)
+    monkeypatch.setattr(module.db, "set_group_cooldown", set_cooldown)
+    asyncio.run(module.handle_appeal(msg, None))
+    classifier.assert_awaited_once_with(msg.text, module.settings)
+    mark.assert_awaited_once_with(msg.chat.id, True)
+    set_cooldown.assert_awaited_once_with(msg.chat.id, module.settings.appeal_cooldown_seconds)
+    msg.reply.assert_awaited_once_with(module.settings.appeal_auto_reply)

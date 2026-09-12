@@ -49,6 +49,15 @@ def test_bot_id_comes_from_token_even_with_stale_env_id():
     assert settings.bot_user_id == 987654321
 
 
+@pytest.mark.parametrize("key", ["", "   "])
+def test_empty_openai_key_is_disabled(key):
+    settings = Settings.from_env({
+        "API_ID": "123", "API_HASH": "hash", "BOT_TOKEN": "123:test-secret",
+        "OPENAI_API_KEY": key,
+    })
+    assert settings.openai_api_key is None
+
+
 @pytest.mark.parametrize("token", ["secret-without-id", "abc:private-secret", "123:", "0:private-secret"])
 def test_invalid_token_reports_format_error_without_leaking_token(token):
     with pytest.raises(ValueError, match="BOT_TOKEN") as error:

@@ -267,6 +267,9 @@ async def log_photo_message(message: Any, member_title: str | None = None) -> No
 
 
 async def handle_appeal(message: Any, member_title: str | None) -> None:
+	if not settings.openai_api_key:
+		return
+
 	text = message_text(message)
 	if not text:
 		return
@@ -347,6 +350,9 @@ async def chats_download(chat_id: int | None = None) -> None:
 
 
 async def send_grouplist_with_appeals() -> None:
+	if not settings.openai_api_key:
+		return
+
 	try:
 		groups = await db.groups_with_appeal()
 		recipients = await superadmin_recipients()
@@ -552,6 +558,8 @@ async def query_handler(_, callback_query):
 
 
 def run() -> None:
+	if not settings.openai_api_key:
+		logger.info("OPENAI_API_KEY is not configured; appeal classification, auto-replies and appeal reports are disabled")
 	loop = asyncio.get_event_loop()
 	loop.create_task(bootstrap_database_records())
 	loop.create_task(run_daily_scheduler())

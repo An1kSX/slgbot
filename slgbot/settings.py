@@ -116,7 +116,7 @@ class Settings:
 			log_zip_prefix=env.get("LOG_ZIP_PREFIX", "slg_chats"),
 			superadmin_ids=parse_csv_ints(env.get("SUPERADMIN_IDS")),
 			admin_ids=parse_csv_ints(env.get("ADMIN_IDS")),
-			openai_api_key=env.get("OPENAI_API_KEY"),
+			openai_api_key=env.get("OPENAI_API_KEY", "").strip() or None,
 			openai_model=env.get("OPENAI_MODEL", "gpt-4o-mini"),
 			mysql_host=env.get("MYSQL_HOST"),
 			mysql_port=env_int(env, "MYSQL_PORT", 3306),

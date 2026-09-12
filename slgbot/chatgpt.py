@@ -19,9 +19,8 @@ async def is_business_message(text: str, settings: Settings | None = None) -> bo
 	if not text:
 		return False
 
-	if not settings.openai_api_key:
-		logger.warning("OPENAI_API_KEY is not configured; treating message as business-related")
-		return True
+	if not (settings.openai_api_key or "").strip():
+		return False
 
 	try:
 		client = AsyncOpenAI(api_key=settings.openai_api_key)
