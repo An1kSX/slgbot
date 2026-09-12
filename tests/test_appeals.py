@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta, time
 from types import SimpleNamespace
 
-from appeals import (
+from slgbot.appeals import (
     is_client_user,
     is_working_time,
     message_text,
     should_handle_appeal,
 )
-from settings import Settings
+from slgbot.settings import Settings
+from slgbot.business_time import BUSINESS_TIMEZONE
 
 
 def make_settings(**overrides):
@@ -45,7 +46,6 @@ def make_settings(**overrides):
         "log_file": "logs.log",
         "runtime_settings_file": "runtime_settings.json",
         "log_archive_time": "00:00",
-        "log_date_offset_minutes": 25,
     }
     values.update(overrides)
     return Settings(**values)
@@ -67,7 +67,7 @@ def message(**kwargs):
         "text": "Need legal advice",
         "caption": None,
         "from_user": user(),
-        "date": datetime(2026, 5, 11, 20, 0),
+        "date": datetime(2026, 5, 11, 20, 0, tzinfo=BUSINESS_TIMEZONE),
         "outgoing": False,
     }
     values.update(kwargs)
@@ -111,7 +111,7 @@ def test_should_handle_appeal_requires_after_hours_client_business_message():
         has_active_cooldown=False,
     )
     assert not should_handle_appeal(
-        message(date=datetime(2026, 5, 11, 10, 0)),
+        message(date=datetime(2026, 5, 11, 10, 0, tzinfo=BUSINESS_TIMEZONE)),
         chat_member_title=None,
         settings=settings,
         is_business_message=True,

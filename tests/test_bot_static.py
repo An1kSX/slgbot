@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def test_bot_has_no_removed_business_features():
-    source = Path("bot.py").read_text(encoding="utf-8")
+    source = Path("slgbot/bot.py").read_text(encoding="utf-8")
 
     forbidden = [
         "bitrix_module",
@@ -24,7 +24,7 @@ def test_bot_has_no_removed_business_features():
 
 
 def test_chatgpt_only_exposes_business_classifier():
-    source = Path("chatgpt.py").read_text(encoding="utf-8")
+    source = Path("slgbot/chatgpt.py").read_text(encoding="utf-8")
 
     forbidden = [
         "sk-",
@@ -54,7 +54,7 @@ def test_removed_integration_modules_are_absent():
 
 
 def test_bot_uses_safe_appeal_clear_and_runtime_group_notifications():
-    source = Path("bot.py").read_text(encoding="utf-8")
+    source = Path("slgbot/bot.py").read_text(encoding="utf-8")
 
     assert "groups_clear_appeal_by_ids" in source
     assert "await db.groups_clear_appeal()" not in source

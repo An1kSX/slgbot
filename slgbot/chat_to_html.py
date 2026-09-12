@@ -1,11 +1,14 @@
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from shutil import copyfile
 from typing import Any
 
-from logger import logger
-from settings import Settings, get_settings
+from slgbot.logger import logger
+from slgbot.settings import Settings, get_settings
+from slgbot.business_time import tashkent_time
+from slgbot.log_archiving import daily_logs_path
 
 
 def safe_chat_dir_name(chat_title: str) -> str:
@@ -15,9 +18,9 @@ def safe_chat_dir_name(chat_title: str) -> str:
 	return name or "unknown_chat"
 
 
-def html_path_builder(chat_title: str, settings: Settings | None = None) -> Path:
+def html_path_builder(chat_id: int, moment: datetime, settings: Settings | None = None) -> Path:
 	settings = settings or get_settings()
-	file_path = Path(settings.groups_dir) / safe_chat_dir_name(chat_title) / "chat_export"
+	file_path = daily_logs_path(settings.groups_dir, moment) / f"chat_{int(chat_id)}" / "chat_export"
 	check_and_create_directory(file_path)
 	return file_path
 
@@ -83,7 +86,7 @@ def add_html_record(
 	settings: Settings | None = None,
 ) -> None:
 	settings = settings or get_settings()
-	file_path = html_path_builder(message.chat.title, settings)
+	file_path = html_path_builder(message.chat.id, message.date, settings)
 
 	if not (file_path / "chat_export.html").exists():
 		create_html_file(message.chat.id, message.chat.title, file_path, settings)
@@ -92,7 +95,7 @@ def add_html_record(
 		base_payload = {
 			"id": str(message.id),
 			"sender": _sender_name(message),
-			"time": message.date.strftime("%d.%m.%Y %H:%M"),
+			"time": tashkent_time(message.date).strftime("%d.%m.%Y %H:%M"),
 			"avatarUrl": "img/avatar.png",
 			"replyTo": str(getattr(message, "reply_to_message_id", None)),
 		}

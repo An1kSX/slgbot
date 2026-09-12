@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 
-from logger import logger
-from settings import Settings, get_settings
+from slgbot.logger import logger
+from slgbot.settings import Settings, get_settings
 
 
 SYSTEM_PROMPT = (

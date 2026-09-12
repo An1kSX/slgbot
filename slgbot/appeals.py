@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Any
 
-from settings import Settings
+from slgbot.settings import Settings
+from slgbot.business_time import tashkent_time
 
 
 def _value(value: Any) -> str:
@@ -46,6 +47,9 @@ def is_client_user(user: Any, chat_member_title: str | None, settings: Settings)
 
 
 def is_working_time(moment: datetime, settings: Settings) -> bool:
+	# Naive values passed directly to this schedule helper are business wall time.
+	if moment.tzinfo is not None:
+		moment = tashkent_time(moment)
 	if moment.weekday() not in settings.working_days:
 		return False
 	current_time = moment.time()
@@ -66,7 +70,7 @@ def should_handle_appeal(
 		return False
 	if has_active_cooldown:
 		return False
-	if is_working_time(getattr(message, "date"), settings):
+	if is_working_time(tashkent_time(getattr(message, "date")), settings):
 		return False
 	if not is_client_user(getattr(message, "from_user", None), chat_member_title, settings):
 		return False

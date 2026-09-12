@@ -5,9 +5,10 @@ def test_dockerfile_runs_bot_with_requirements():
     source = Path("Dockerfile").read_text(encoding="utf-8")
 
     assert "FROM python:3.11-slim" in source
-    assert "COPY requirements.txt" in source
-    assert "pip install --no-cache-dir -r requirements.txt" in source
-    assert 'CMD ["python", "bot.py"]' in source
+    assert "COPY requirements/runtime.txt" in source
+    assert "pip install --no-cache-dir -r requirements/runtime.txt" in source
+    assert 'CMD ["python", "-m", "slgbot"]' in source
+    assert "COPY slgbot/ slgbot/" in source
 
 
 def test_compose_defines_bot_and_mysql_services():
@@ -19,14 +20,12 @@ def test_compose_defines_bot_and_mysql_services():
     assert "bot:" in source
     assert "depends_on:" in source
     assert "MYSQL_HOST: mysql" in source
-    assert "SESSION_NAME: /app/runtime/slgbot" in source
-    assert "./groups:/app/groups" in source
-    assert "./archive:/app/archive" in source
-    assert "./runtime:/app/runtime" in source
+    assert "SESSION_NAME: /app/data/runtime/slgbot" in source
+    assert "./data:/app/data" in source
 
 
 def test_requirements_include_runtime_dependencies_only():
-    source = Path("requirements.txt").read_text(encoding="utf-8")
+    source = Path("requirements/runtime.txt").read_text(encoding="utf-8")
 
     for package in ["pyrogram", "python-dotenv", "aiomysql", "openai"]:
         assert package in source

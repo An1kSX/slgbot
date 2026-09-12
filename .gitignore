@@ -17,6 +17,8 @@ logs.log
 groups/
 archive/
 runtime/
+data/
+backups/
 
 .venv/
 venv/

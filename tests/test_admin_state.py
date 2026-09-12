@@ -1,6 +1,6 @@
 import asyncio
 
-from admin_state import AdminStateStore
+from slgbot.admin_state import AdminStateStore
 
 
 def test_env_admin_state_is_kept_even_without_database_row():

@@ -1,7 +1,7 @@
 import aiomysql
 import asyncio
 import os
-from logger import logger
+from slgbot.logger import logger
 
 
 def quote_mysql_identifier(identifier: str) -> str:

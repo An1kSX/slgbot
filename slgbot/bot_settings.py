@@ -1,6 +1,6 @@
 from pyrogram import Client
 
-from settings import get_settings
+from slgbot.settings import get_settings
 
 
 settings = get_settings()

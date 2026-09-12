@@ -3,17 +3,17 @@ services:
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_root_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Fill MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-slg_bot}
       MYSQL_USER: ${MYSQL_USER:-slg_bot}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_mysql_password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Fill MYSQL_PASSWORD in .env}
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      test: ["CMD-SHELL", 'mysqladmin ping -h 127.0.0.1 -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}" --silent']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -25,17 +25,23 @@ services:
     env_file:
       - .env
     environment:
+      API_ID: ${API_ID:?Fill API_ID in .env}
+      API_HASH: ${API_HASH:?Fill API_HASH in .env}
+      BOT_TOKEN: ${BOT_TOKEN:?Fill BOT_TOKEN in .env}
+      SUPERADMIN_IDS: ${SUPERADMIN_IDS:?Fill SUPERADMIN_IDS in .env}
       MYSQL_HOST: mysql
+      MYSQL_USER: ${MYSQL_USER:-slg_bot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Fill MYSQL_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-slg_bot}
+      TZ: Asia/Tashkent
       MYSQL_PORT: 3306
-      SESSION_NAME: /app/runtime/slgbot
-      GROUPS_DIR: /app/groups
-      LOG_ARCHIVE_DIR: /app/archive
-      RUNTIME_SETTINGS_FILE: /app/runtime/runtime_settings.json
-      LOG_FILE: /app/runtime/logs.log
+      SESSION_NAME: /app/data/runtime/slgbot
+      GROUPS_DIR: /app/data/groups
+      LOG_ARCHIVE_DIR: /app/data/archive
+      RUNTIME_SETTINGS_FILE: /app/data/runtime/runtime_settings.json
+      LOG_FILE: /app/data/runtime/logs.log
     volumes:
-      - ./groups:/app/groups
-      - ./archive:/app/archive
-      - ./runtime:/app/runtime
+      - ./data:/app/data
     depends_on:
       mysql:
         condition: service_healthy

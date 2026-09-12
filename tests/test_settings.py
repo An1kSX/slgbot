@@ -1,6 +1,8 @@
 from datetime import time
 
-from settings import Settings, parse_csv_ints, parse_csv_strings, parse_time
+import pytest
+
+from slgbot.settings import Settings, parse_csv_ints, parse_csv_strings, parse_time
 
 
 def test_parse_csv_ints_ignores_empty_values():
@@ -20,20 +22,35 @@ def test_settings_from_env_uses_slg_defaults():
         {
             "API_ID": "123",
             "API_HASH": "hash",
-            "BOT_TOKEN": "token",
+            "BOT_TOKEN": "123456789:test-secret",
             "SUPERADMIN_IDS": "10,20",
         }
     )
 
     assert settings.api_id == 123
     assert settings.api_hash == "hash"
-    assert settings.bot_token == "token"
+    assert settings.bot_token == "123456789:test-secret"
+    assert settings.bot_user_id == 123456789
     assert settings.staff_marker == "SLG"
     assert settings.working_days == {0, 1, 2, 3, 4, 5}
     assert settings.work_start == time(9, 0)
     assert settings.work_end == time(18, 0)
     assert settings.superadmin_ids == {10, 20}
     assert settings.openai_model == "gpt-4o-mini"
-    assert settings.runtime_settings_file == "runtime_settings.json"
+    assert settings.runtime_settings_file == "data/runtime/runtime_settings.json"
     assert settings.log_archive_time == "00:00"
-    assert settings.log_date_offset_minutes == 25
+
+
+def test_bot_id_comes_from_token_even_with_stale_env_id():
+    settings = Settings.from_env({
+        "API_ID": "123", "API_HASH": "hash", "BOT_TOKEN": "987654321:test-secret",
+        "BOT_USER_ID": "111111111",
+    })
+    assert settings.bot_user_id == 987654321
+
+
+@pytest.mark.parametrize("token", ["secret-without-id", "abc:private-secret", "123:", "0:private-secret"])
+def test_invalid_token_reports_format_error_without_leaking_token(token):
+    with pytest.raises(ValueError, match="BOT_TOKEN") as error:
+        Settings.from_env({"API_ID": "123", "API_HASH": "hash", "BOT_TOKEN": token})
+    assert token not in str(error.value)

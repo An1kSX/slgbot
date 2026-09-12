@@ -1,4 +1,4 @@
-from database import database_schema_queries, quote_mysql_identifier, table_schema_queries
+from slgbot.database import database_schema_queries, quote_mysql_identifier, table_schema_queries
 
 
 def test_quote_mysql_identifier_wraps_and_escapes_backticks():

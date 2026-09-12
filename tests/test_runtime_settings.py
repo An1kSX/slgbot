@@ -1,4 +1,4 @@
-from runtime_settings import (
+from slgbot.runtime_settings import (
     RuntimeSettings,
     load_runtime_settings,
     toggle_new_group_notifications,

@@ -1,4 +1,8 @@
 .env
+.env.*
+.git/
+data/
+backups/
 .pytest_cache/
 __pycache__/
 *.pyc
@@ -11,5 +15,6 @@ archive/
 runtime/
 *.session
 *.session-journal
-docs/superpowers/
+docs/
 tests/
+.venv/

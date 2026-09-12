@@ -1,0 +1,1 @@
+"""SherLegal Telegram group logger."""

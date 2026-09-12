@@ -1,7 +1,7 @@
 import time
 
-from database import database as db
-from logger import logger
+from slgbot.database import database as db
+from slgbot.logger import logger
 
 
 async def get_group_title(group_id: int) -> str:

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import zipfile
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,16 +12,17 @@ from pyrogram import filters, utils
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.types import KeyboardButton, ReplyKeyboardMarkup
 
-import chatgpt
-import db_functions as db
-from admin_state import AdminStateStore
-from appeals import is_client_user, message_text, should_handle_appeal
-from bot_settings import bot
-from chat_to_html import add_html_record, html_path_builder, safe_chat_dir_name
-from log_archiving import archive_group_logs, log_date_label
-from logger import logger
-from runtime_settings import load_runtime_settings, toggle_new_group_notifications
-from settings import get_settings
+from slgbot import chatgpt
+from slgbot import db_functions as db
+from slgbot.admin_state import AdminStateStore
+from slgbot.appeals import is_client_user, message_text, should_handle_appeal
+from slgbot.bot_settings import bot
+from slgbot.chat_to_html import add_html_record, html_path_builder, safe_chat_dir_name
+from slgbot.log_archiving import archive_group_logs, daily_logs_path, log_date_label
+from slgbot.business_time import business_now, tashkent_time
+from slgbot.logger import logger
+from slgbot.runtime_settings import load_runtime_settings, toggle_new_group_notifications
+from slgbot.settings import get_settings
 
 
 settings = get_settings()
@@ -55,15 +55,12 @@ def chat_title(message: Any) -> str:
 	return message.chat.title or str(message.chat.id)
 
 
-def chat_dir(title: str) -> Path:
-	directory = Path(settings.groups_dir) / safe_chat_dir_name(title)
-	directory.mkdir(parents=True, exist_ok=True)
-	html_path_builder(title, settings)
-	return directory
+def chat_dir(message: Any) -> Path:
+	return html_path_builder(message.chat.id, message.date, settings).parent
 
 
-def json_log_path(title: str) -> Path:
-	return chat_dir(title) / "data.json"
+def json_log_path(message: Any) -> Path:
+	return chat_dir(message) / "data.json"
 
 
 def add_record_to_json_file(file_path: Path, new_record: dict[str, Any]) -> None:
@@ -200,13 +197,15 @@ async def log_text_message(message: Any, member_title: str | None = None) -> Non
 	title = chat_title(message)
 	role, user = await user_info_parser(message, member_title)
 	record = {
+		"chat_id": message.chat.id,
+		"chat_title": title,
 		"user": f"{user} ({role})",
 		"message_id": message.id,
 		"message_reply_to_message_id": message.reply_to_message_id,
 		"text": message.text,
-		"timestamp": message.date.strftime("%H:%M:%S"),
+		"timestamp": tashkent_time(message.date).strftime("%H:%M:%S"),
 	}
-	add_record_to_json_file(json_log_path(title), record)
+	add_record_to_json_file(json_log_path(message), record)
 	add_html_record(message, settings=settings)
 
 
@@ -215,17 +214,19 @@ async def log_document_message(message: Any, member_title: str | None = None) ->
 	role, user = await user_info_parser(message, member_title)
 	document_name = message.document.file_name
 	record = {
+		"chat_id": message.chat.id,
+		"chat_title": title,
 		"user": f"{user} ({role})",
 		"message_id": message.id,
 		"message_reply_to_message_id": message.reply_to_message_id,
 		"document": document_name,
 		"caption": message.caption,
-		"timestamp": message.date.strftime("%H:%M:%S"),
+		"timestamp": tashkent_time(message.date).strftime("%H:%M:%S"),
 	}
 
 	file_size_mb = message.document.file_size / (1024 * 1024)
 	if file_size_mb <= settings.max_document_mb:
-		export_path = html_path_builder(title, settings)
+		export_path = html_path_builder(message.chat.id, message.date, settings)
 		file_name = safe_chat_dir_name(f"{message.document.file_unique_id}_{document_name}")
 		document_path = export_path / "docs" / file_name
 		if not document_path.exists():
@@ -238,29 +239,31 @@ async def log_document_message(message: Any, member_title: str | None = None) ->
 			settings=settings,
 		)
 
-	add_record_to_json_file(json_log_path(title), record)
+	add_record_to_json_file(json_log_path(message), record)
 
 
 async def log_photo_message(message: Any, member_title: str | None = None) -> None:
 	title = chat_title(message)
 	role, user = await user_info_parser(message, member_title)
 	record = {
+		"chat_id": message.chat.id,
+		"chat_title": title,
 		"user": f"{user} ({role})",
 		"message_id": message.id,
 		"message_reply_to_message_id": message.reply_to_message_id,
 		"photo": "(image)",
 		"caption": message.caption,
-		"timestamp": message.date.strftime("%H:%M:%S"),
+		"timestamp": tashkent_time(message.date).strftime("%H:%M:%S"),
 	}
 
-	export_path = html_path_builder(title, settings)
+	export_path = html_path_builder(message.chat.id, message.date, settings)
 	image_name = f"photo-{message.photo.file_unique_id}.png"
 	image_path = export_path / "img" / image_name
 	if not image_path.exists():
 		await bot.download_media(message=message, file_name=str(image_path))
 	add_html_record(message, is_img=True, img_path=f"img/{image_name}", settings=settings)
 
-	add_record_to_json_file(json_log_path(title), record)
+	add_record_to_json_file(json_log_path(message), record)
 
 
 async def handle_appeal(message: Any, member_title: str | None) -> None:
@@ -323,9 +326,9 @@ def zip_directory(source_path: Path, zip_path: Path) -> bool:
 
 
 async def chats_download(chat_id: int | None = None) -> None:
-	groups_path = Path(settings.groups_dir)
-	now = datetime.now()
-	log_label = log_date_label(now, settings.log_date_offset_minutes)
+	now = business_now()
+	groups_path = daily_logs_path(settings.groups_dir, now)
+	log_label = log_date_label(now)
 	zip_path = Path(f"{settings.log_zip_prefix}_{log_label}_{now.strftime('%H%M%S')}.zip")
 	if not zip_directory(groups_path, zip_path):
 		return
@@ -372,8 +375,7 @@ async def archive_current_logs() -> None:
 		archived_count = archive_group_logs(
 			settings.groups_dir,
 			settings.log_archive_dir,
-			datetime.now(),
-			settings.log_date_offset_minutes,
+			business_now(),
 		)
 		logger.info(f"Archived {archived_count} group log folders")
 	except Exception as e:
@@ -385,7 +387,7 @@ async def run_daily_scheduler() -> None:
 	last_appeal_report_date: str | None = None
 	last_archive_date: str | None = None
 	while True:
-		now = datetime.now()
+		now = business_now()
 		today = now.strftime("%Y-%m-%d")
 		if now.strftime("%H:%M") == settings.appeal_report_time and last_appeal_report_date != today:
 			await send_grouplist_with_appeals()
@@ -549,9 +551,10 @@ async def query_handler(_, callback_query):
 			)
 
 
-loop = asyncio.get_event_loop()
-loop.create_task(bootstrap_database_records())
-loop.create_task(run_daily_scheduler())
+def run() -> None:
+	loop = asyncio.get_event_loop()
+	loop.create_task(bootstrap_database_records())
+	loop.create_task(run_daily_scheduler())
 
-logger.info("SherLegal group logger bot started")
-bot.run()
+	logger.info("SherLegal group logger bot started")
+	bot.run()
